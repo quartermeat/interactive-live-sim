@@ -22,6 +22,15 @@ Add the `/stream` URL to OBS as a Browser Source at 1080x1920, or open it full-s
 
 If port 8090 is unavailable, run `$env:PORT='8091'; python server.py` and use the matching port.
 
+Start the complete live setup from PowerShell with:
+
+```powershell
+cd D:\Codex\Projects\work\interactive-live-sim
+.\scripts\start-live.ps1 -TikTokUsername quartermeat
+```
+
+This starts the connector, real TikTok LIVE adapter, arena server, and a monitor-fitted Chrome stream window. Use `-SkipAdapter` when testing without live TikTok data.
+
 Build the Go/WASM Canvas renderer with:
 
 ```powershell
@@ -29,7 +38,7 @@ cd D:\Codex\Projects\work\interactive-live-sim
 .\scripts\build-wasm.ps1
 ```
 
-The browser shell displays the native 1080×1980 canvas at half size (540×990 CSS pixels) so it remains easy to capture in LIVE Studio while preserving the stream's 9:16 pixel dimensions.
+The browser shell keeps a native 1080×1980 backing canvas and scales it proportionally to the available browser window, so the complete scene remains visible on smaller monitors without clipping.
 
 The arena also subscribes to the normalized connector at `http://127.0.0.1:8787/events`. Start that service in another PowerShell window:
 
