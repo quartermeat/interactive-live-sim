@@ -9,9 +9,11 @@ import (
 )
 
 const (
-	logicalW = 1080
-	logicalH = 1980
-	timeout  = 2 * time.Minute
+	logicalW          = 1080
+	logicalH          = 1980
+	timeout           = 2 * time.Minute
+	maxActiveViewers  = 24
+	viewerSlotSpacing = 150.0
 )
 
 type viewer struct {
@@ -21,6 +23,7 @@ type viewer struct {
 	PulseUntil              time.Time
 	Image                   js.Value
 	ImageReady              bool
+	ImageFailed             bool
 }
 
 type arena struct {
@@ -54,12 +57,59 @@ func main() {
 }
 
 func (a *arena) update() {
-	now := time.Now()
+	a.removeStale(time.Now())
+}
+
+func (a *arena) removeStale(now time.Time) {
 	for id, v := range a.viewers {
 		if now.Sub(v.LastSeen) > timeout {
 			delete(a.viewers, id)
 		}
 	}
+}
+
+func (a *arena) removeLeastRecent() {
+	var oldestID string
+	var oldest time.Time
+	for id, v := range a.viewers {
+		if oldestID == "" || v.LastSeen.Before(oldest) {
+			oldestID = id
+			oldest = v.LastSeen
+		}
+	}
+	if oldestID != "" {
+		delete(a.viewers, oldestID)
+	}
+}
+
+func (a *arena) spawnPosition() (float64, float64) {
+	// Six columns by four rows leaves generous space for the portrait and name.
+	// Pick a random free cell so new arrivals do not stack on existing viewers.
+	positions := make([][2]float64, 0, maxActiveViewers)
+	for row := 0; row < 4; row++ {
+		for col := 0; col < 6; col++ {
+			positions = append(positions, [2]float64{
+				150 + float64(col)*156,
+				430 + float64(row)*300,
+			})
+		}
+	}
+	for _, index := range rand.Perm(len(positions)) {
+		candidate := positions[index]
+		free := true
+		for _, v := range a.viewers {
+			dx := v.X - candidate[0]
+			dy := v.Y - candidate[1]
+			if dx*dx+dy*dy < viewerSlotSpacing*viewerSlotSpacing {
+				free = false
+				break
+			}
+		}
+		if free {
+			return candidate[0], candidate[1]
+		}
+	}
+	return 150, 430
 }
 
 func (a *arena) draw() {
@@ -172,20 +222,31 @@ func (a *arena) connectEvents() {
 		var e struct {
 			Type   string `json:"type"`
 			Viewer struct {
-				ID, Username, AvatarURL, Color string
+				ID        string `json:"id"`
+				Username  string `json:"username"`
+				AvatarURL string `json:"avatar_url"`
+				Color     string `json:"color"`
 			} `json:"viewer"`
 		}
 		if json.Unmarshal([]byte(args[0].Get("data").String()), &e) != nil || e.Viewer.ID == "" {
 			return nil
 		}
+		a.removeStale(time.Now())
 		v := a.viewers[e.Viewer.ID]
 		if v == nil {
+			if len(a.viewers) >= maxActiveViewers {
+				a.removeLeastRecent()
+			}
+			x, y := a.spawnPosition()
 			v = &viewer{
 				ID: e.Viewer.ID, Name: e.Viewer.Username, Avatar: e.Viewer.AvatarURL,
-				Color: e.Viewer.Color, X: 140 + rand.Float64()*800, Y: 420 + rand.Float64()*1120,
+				Color: e.Viewer.Color, X: x, Y: y,
 				LastSeen: time.Now(),
 			}
 			a.viewers[v.ID] = v
+			a.loadAvatar(v)
+		} else if v.Avatar == "" && e.Viewer.AvatarURL != "" {
+			v.Avatar = e.Viewer.AvatarURL
 			a.loadAvatar(v)
 		}
 		v.LastSeen = time.Now()
@@ -199,17 +260,25 @@ func (a *arena) connectEvents() {
 }
 
 func (a *arena) loadAvatar(v *viewer) {
-	if v.Avatar == "" {
+	if v.Avatar == "" || v.ImageReady {
 		return
 	}
 	img := js.Global().Get("Image").New()
 	callback := js.FuncOf(func(js.Value, []js.Value) interface{} {
 		v.Image = img
 		v.ImageReady = true
+		v.ImageFailed = false
+		return nil
+	})
+	failure := js.FuncOf(func(js.Value, []js.Value) interface{} {
+		v.ImageFailed = true
 		return nil
 	})
 	a.imageLoad[v.ID] = callback
+	a.imageLoad[v.ID+":error"] = failure
 	img.Set("onload", callback)
+	img.Set("onerror", failure)
+	img.Set("decoding", "async")
 	img.Set("src", v.Avatar)
 }
 
