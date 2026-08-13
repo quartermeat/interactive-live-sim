@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Avatar Arena Stream</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #05060b; color: white; font: 14px Segoe UI, system-ui, sans-serif; }
+    .stage { width: min(100vw, 56.25vh); height: min(100vh, 177.78vw); position: relative; overflow: hidden; margin: auto; background: radial-gradient(circle at 50% 38%, #304d78, #12152a 45%, #170d1e); }
+    .stage:before { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 65%, #05060bdd), repeating-linear-gradient(90deg, transparent 0 47px, #ffffff0a 48px), repeating-linear-gradient(0deg, transparent 0 47px, #ffffff0a 48px); }
+    .title { position: absolute; top: 75px; width: 100%; text-align: center; font-size: 24px; font-weight: 900; letter-spacing: .18em; text-shadow: 0 3px 20px #000; }
+    .fighter { position: absolute; width: 62px; height: 76px; display: grid; justify-items: center; gap: 3px; z-index: 1; transition: all .5s ease; }
+    .avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--c); display: grid; place-items: center; color: #080a11; font-weight: 900; border: 3px solid #fff9; box-shadow: 0 5px 14px #0008; overflow: hidden; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .fighter span { max-width: 86px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 700; text-shadow: 0 2px 4px #000; }
+    .pulse { animation: pulse .5s ease; }
+    @keyframes pulse { 50% { filter: brightness(2) saturate(1.5); transform: scale(1.4); } }
+    .empty { position: absolute; inset: 45% 20% auto; text-align: center; color: #ffffff99; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main id="stage" class="stage">
+    <div class="title">AVATAR ARENA</div>
+    <div id="empty" class="empty">Waiting for viewers...</div>
+  </main>
+  <script>
+    const stage = document.getElementById('stage');
+    const fighters = new Map();
+    const lastSeen = new Map();
+    const PRESENCE_TIMEOUT_MS = 120000;
+    function initials(s) { return s.split(/\s+/).map(x => x[0]).join('').slice(0, 2).toUpperCase(); }
+    function esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function add(u) {
+      if (fighters.has(u.id)) return;
+      const el = document.createElement('div');
+      el.className = 'fighter';
+      el.dataset.id = u.id;
+      el.style.left = `${12 + Math.random() * 72}%`;
+      el.style.top = `${20 + Math.random() * 62}%`;
+      el.innerHTML = `<div class="avatar" style="--c:${u.color || '#7c6cff'}">${u.avatar ? `<img src="${esc(u.avatar)}">` : initials(esc(u.name))}</div><span>${esc(u.name)}</span>`;
+      stage.appendChild(el);
+      fighters.set(u.id, el);
+      lastSeen.set(u.id, Date.now());
+      document.getElementById('empty').style.display = 'none';
+    }
+    function touch(u) {
+      lastSeen.set(u.id, Date.now());
+    }
+    function remove(id) {
+      const el = fighters.get(id);
+      if (el) el.remove();
+      fighters.delete(id);
+      lastSeen.delete(id);
+      if (!fighters.size) document.getElementById('empty').style.display = 'block';
+    }
+    setInterval(() => {
+      const cutoff = Date.now() - PRESENCE_TIMEOUT_MS;
+      for (const [id, seen] of lastSeen) if (seen < cutoff) remove(id);
+    }, 10000);
+    function react(e) {
+      const u = e.viewer;
+      if (e.type === 'live_end') {
+        for (const id of fighters.keys()) remove(id);
+        return;
+      }
+      add({ id: u.id, name: u.username, avatar: u.avatar_url, color: u.color || '#5de1e6' });
+      touch({ id: u.id });
+      const el = fighters.get(u.id);
+      if (!el) return;
+      el.classList.remove('pulse');
+      void el.offsetWidth;
+      el.classList.add('pulse');
+      if (e.type === 'gift') {
+        el.style.transform = `translate(${Math.random() * 120 - 60}px,${Math.random() * 120 - 60}px) scale(1.15)`;
+        setTimeout(() => el.style.transform = '', 500);
+      }
+    }
+    async function start() {
+      const state = await fetch('/api/state').then(r => r.json());
+      const stream = new EventSource('/api/events');
+      stream.onmessage = message => {
+        const event = JSON.parse(message.data);
+        if (event.type === 'state') { event.users.forEach(add); return; }
+        react(event);
+      };
+    }
+    start();
+  </script>
+</body>
+</html>

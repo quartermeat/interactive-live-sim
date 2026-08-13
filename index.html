@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Arena Simulator</title>
+  <style>
+    :root { color-scheme: dark; --bg:#090b12; --panel:#111522; --line:#293149; --text:#eef2ff; --muted:#8993ad; --accent:#7c6cff; --cyan:#5de1e6; --danger:#ff6b8a; }
+    * { box-sizing:border-box; } body { margin:0; background:radial-gradient(circle at 70% 0,#22204b 0,#090b12 42%); color:var(--text); font:14px/1.4 Inter,Segoe UI,system-ui,sans-serif; }
+    button,input,select { font:inherit; } button { border:1px solid var(--line); background:#1a2032; color:var(--text); border-radius:9px; padding:9px 11px; cursor:pointer; } button:hover { border-color:var(--accent); background:#242b44; } button.primary { background:var(--accent); border-color:var(--accent); } button.danger { color:#ff9bb0; }
+    .shell { display:grid; grid-template-columns:290px minmax(400px,1fr) 340px; gap:14px; min-height:100vh; padding:14px; } .panel { background:rgba(17,21,34,.92); border:1px solid var(--line); border-radius:15px; overflow:hidden; } .panel > header { padding:16px 17px 12px; border-bottom:1px solid var(--line); } h1,h2,h3,p { margin:0; } h1 { font-size:20px; } h2 { font-size:15px; } .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:.13em; font-size:10px; font-weight:700; } .sub { color:var(--muted); margin-top:4px; }
+    .controls { padding:14px; display:grid; gap:10px; } label { display:grid; gap:5px; color:var(--muted); font-size:12px; } input,select { width:100%; background:#0c101c; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:9px; outline:none; } input:focus,select:focus { border-color:var(--accent); } .row { display:flex; gap:8px; align-items:center; } .row > * { flex:1; }
+    .users { padding:10px; display:grid; gap:8px; max-height:calc(100vh - 250px); overflow:auto; } .user { display:grid; grid-template-columns:38px 1fr auto; gap:9px; align-items:center; padding:9px; border:1px solid transparent; border-radius:11px; background:#0d1220; } .user.selected { border-color:var(--accent); background:#171834; } .avatar { width:38px; height:38px; border-radius:50%; display:grid; place-items:center; font-weight:800; color:#080a11; background:var(--avatar,#7c6cff); overflow:hidden; } .avatar img { width:100%; height:100%; object-fit:cover; } .user-name { font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .user-meta { color:var(--muted); font-size:11px; } .remove { padding:4px 7px; }
+    .stage-wrap { display:flex; justify-content:center; padding:14px; } .stage { width:min(100%,520px); aspect-ratio:9/16; position:relative; overflow:hidden; border-radius:16px; border:1px solid #3d4771; background:linear-gradient(160deg,#192a4a,#101326 46%,#281834); box-shadow:0 20px 60px #0008; } .stage:before { content:""; position:absolute; inset:0; background:linear-gradient(transparent 70%,#080a12cc), repeating-linear-gradient(90deg,transparent 0 47px,#ffffff09 48px), repeating-linear-gradient(0deg,transparent 0 47px,#ffffff09 48px); } .stage-top { position:absolute; inset:14px 14px auto; display:flex; justify-content:space-between; align-items:center; z-index:2; } .live { background:#ff416d; border-radius:20px; padding:5px 10px; font-size:11px; font-weight:800; } .score { background:#090b12bb; border:1px solid #ffffff22; padding:6px 9px; border-radius:8px; font-size:12px; } .arena-title { position:absolute; top:75px; width:100%; text-align:center; font-weight:900; letter-spacing:.18em; font-size:24px; text-shadow:0 3px 20px #000; } .hint { position:absolute; bottom:16px; left:14px; right:14px; text-align:center; color:#ffffffaa; font-size:11px; }
+    .fighter { position:absolute; width:58px; height:72px; display:grid; justify-items:center; gap:3px; transition:transform .35s ease,filter .2s; z-index:1; } .fighter .avatar { width:48px; height:48px; border:3px solid #fff9; box-shadow:0 5px 14px #0008; } .fighter span { max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; font-weight:700; text-shadow:0 2px 4px #000; } .pulse { animation:pulse .45s ease; } @keyframes pulse { 50% { filter:brightness(2) saturate(1.5); transform:scale(1.35); } }
+    .events { padding:12px; display:grid; gap:10px; } .event-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; } .event-grid button { text-align:left; } .event-grid button small { display:block; color:var(--muted); font-size:10px; margin-top:2px; } .log { height:calc(100vh - 235px); min-height:250px; overflow:auto; padding:0 12px 12px; display:grid; align-content:start; gap:6px; } .log-item { border-left:2px solid var(--accent); background:#0b101c; padding:7px 8px; font-size:11px; } .log-item time { display:block; color:var(--muted); font-size:10px; } .json { margin:0 12px 12px; padding:10px; max-height:180px; overflow:auto; background:#080b13; color:#9fe6ca; border-radius:9px; font:10px/1.45 Consolas,monospace; white-space:pre-wrap; }
+    @media (max-width:1000px) { .shell { grid-template-columns:250px 1fr; } .right { grid-column:1/-1; } .log { height:260px; } } @media (max-width:680px) { .shell { display:block; padding:8px; } .panel { margin-bottom:10px; } .users { max-height:260px; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="panel">
+      <header><div class="eyebrow">Input simulator</div><h1>Viewers</h1><p class="sub">Create a small audience and select who acts.</p></header>
+      <div class="controls">
+        <label>Viewer name<input id="name" placeholder="e.g. NeonMoth"></label>
+        <label>Avatar image URL <span class="sub">Optional; initials are used otherwise.</span><input id="avatar" placeholder="https://..."></label>
+        <div class="row"><label>Color<input id="color" type="color" value="#7c6cff"></label><button class="primary" id="add">Add viewer</button></div>
+        <div class="row"><button id="seed">Seed 8 viewers</button><button class="danger" id="clear">Clear all</button></div>
+      </div>
+      <div id="users" class="users"></div>
+    </section>
+
+    <section class="panel">
+      <header><div class="eyebrow">Stream output</div><h1>Viewer Avatar Arena</h1><p class="sub">This is the scene you would later add to OBS as a browser source.</p></header>
+      <div class="stage-wrap"><div id="stage" class="stage"><div class="stage-top"><span class="live">● LIVE SIMULATION</span><span id="score" class="score">Energy 0</span></div><div class="arena-title">AVATAR ARENA</div><div class="hint">Select a viewer, then trigger an event →</div></div></div>
+    </section>
+
+    <section class="panel right">
+      <header><div class="eyebrow">Event console</div><h1>Simulate interaction</h1><p class="sub">Events use the same shape a real TikTok adapter will produce.</p></header>
+      <div class="events"><label>Gift<select id="gift"><option>Rose</option><option>Heart Me</option><option>Galaxy</option><option>Dragon</option></select></label><div class="event-grid"><button data-event="comment">💬 Comment<small>!join or any message</small></button><button data-event="like">❤️ Like<small>Add arena energy</small></button><button data-event="follow">➕ Follow<small>Spawn a bonus</small></button><button data-event="gift">🎁 Gift<small>Trigger power</small></button></div><button id="burst">⚡ Random audience burst</button></div>
+      <h2 style="padding:4px 12px 8px">Event log</h2><div id="log" class="log"></div><pre id="json" class="json">Select an event to inspect its payload.</pre>
+    </section>
+  </main>
+  <script>
+    const state = { users: [], selected: null, energy: 0, lastEvent: null };
+    const $ = id => document.getElementById(id);
+    const names = ['NeonMoth','PixelPilot','CosmicJax','MangoByte','RogueRaccoon','LunaLoop','StaticFox','OrbitOwl'];
+    function initials(name) { return name.split(/\s+/).map(x => x[0]).join('').slice(0,2).toUpperCase(); }
+    function selectedUser() { return state.users.find(u => u.id === state.selected) || state.users[0]; }
+    function addUser(name, avatar='', color='#7c6cff') { const user = { id: crypto.randomUUID(), name: name.trim() || `Viewer ${state.users.length+1}`, avatar: avatar.trim(), color }; state.users.push(user); state.selected = user.id; renderUsers(); spawn(user); return user; }
+    function avatarHTML(user) { return user.avatar ? `<div class="avatar" style="--avatar:${user.color}"><img src="${escapeHTML(user.avatar)}" alt=""></div>` : `<div class="avatar" style="--avatar:${user.color}">${escapeHTML(initials(user.name))}</div>`; }
+    function escapeHTML(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function renderUsers() { $('users').innerHTML = state.users.length ? state.users.map(u => `<div class="user ${u.id===state.selected?'selected':''}" data-id="${u.id}">${avatarHTML(u)}<div><div class="user-name">${escapeHTML(u.name)}</div><div class="user-meta">${u.id===state.selected?'selected':'click to select'}</div></div><button class="remove" data-remove="${u.id}">×</button></div>`).join('') : '<p class="sub" style="padding:10px">No viewers yet. Add one or seed a crowd.</p>'; }
+    function spawn(user) { const el = document.createElement('div'); el.className='fighter'; el.dataset.id=user.id; el.style.left = `${12 + Math.random()*72}%`; el.style.top = `${20 + Math.random()*62}%`; el.innerHTML = `${avatarHTML(user)}<span>${escapeHTML(user.name)}</span>`; $('stage').appendChild(el); }
+    function ensureFighters() { state.users.forEach(u => { if (!$(`stage`).querySelector(`.fighter[data-id="${u.id}"]`)) spawn(u); }); }
+    function emit(type, detail={}) { const user = selectedUser(); if (!user) return alert('Add or seed at least one viewer first.'); const event = { id: crypto.randomUUID(), type, at: new Date().toISOString(), viewer: { id:user.id, username:user.name, avatar_url:user.avatar || null }, ...detail }; state.lastEvent = event; state.energy += type==='like' ? 1 : type==='gift' ? ({Rose:5,'Heart Me':12,Galaxy:35,Dragon:80}[detail.gift] || 5) : type==='follow' ? 8 : 0; $('score').textContent = `Energy ${state.energy}`; const fighter = document.querySelector(`.fighter[data-id="${user.id}"]`); if (fighter) { fighter.classList.remove('pulse'); void fighter.offsetWidth; fighter.classList.add('pulse'); if(type==='gift') fighter.style.transform = `translate(${Math.random()*80-40}px,${Math.random()*80-40}px) scale(1.15)`; } log(event); }
+    function log(event) { const label = event.type==='gift' ? `${event.viewer.username} sent a ${event.gift}` : `${event.viewer.username} ${event.type==='comment'?'commented':event.type+'d'}`; const item=document.createElement('div'); item.className='log-item'; item.innerHTML=`<b>${escapeHTML(label)}</b><time>${new Date(event.at).toLocaleTimeString()}</time>`; $('log').prepend(item); $('json').textContent=JSON.stringify(event,null,2); }
+    $('add').onclick=()=>addUser($('name').value,$('avatar').value,$('color').value); $('name').onkeydown=e=>{if(e.key==='Enter')$('add').click()}; $('clear').onclick=()=>{state.users=[];state.selected=null;document.querySelectorAll('.fighter').forEach(x=>x.remove());renderUsers()}; $('seed').onclick=()=>{names.forEach((n,i)=>addUser(n,'',`hsl(${i*43} 80% 65%)`));ensureFighters()};
+    $('users').onclick=e=>{const remove=e.target.closest('[data-remove]'); if(remove){state.users=state.users.filter(u=>u.id!==remove.dataset.remove);document.querySelector(`.fighter[data-id="${remove.dataset.remove}"]`)?.remove();if(state.selected===remove.dataset.remove)state.selected=state.users[0]?.id;renderUsers();return;} const row=e.target.closest('[data-id]');if(row){state.selected=row.dataset.id;renderUsers();}};
+    document.querySelectorAll('[data-event]').forEach(btn=>btn.onclick=()=>{const type=btn.dataset.event;emit(type,type==='comment'?{comment:'!join'}:type==='gift'?{gift:$('gift').value}:{})}); $('burst').onclick=()=>{if(!state.users.length)return alert('Add or seed viewers first.'); for(let i=0;i<Math.min(5,state.users.length);i++){state.selected=state.users[Math.floor(Math.random()*state.users.length)].id;emit(['like','comment','follow','gift'][Math.floor(Math.random()*4)],Math.random()>.5?{gift:$('gift').value}:{comment:'!join'});}renderUsers()};
+    renderUsers();
+  </script>
+</body>
+</html>
