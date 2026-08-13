@@ -40,6 +40,12 @@ cd D:\Codex\Projects\work\interactive-live-sim
 
 The browser shell keeps a native 1080×1980 backing canvas and scales it proportionally to the available browser window, so the complete scene remains visible on smaller monitors without clipping.
 
+The Go/WASM scene includes the first arena game mechanic: active portraits drift through the arena, bounce off its boundaries, and collide with one another. The newest joined portrait wins each collision; the older portrait explodes and disappears. Interaction timestamps remain available for future mechanics and presence handling.
+
+The arena keeps a five-minute rolling `joined` roster. Portraits scale from 100% at join time toward 45% as their join age increases. Each portrait has its own respawn timer after collision, with higher interaction scores producing faster respawns.
+
+A Go/WASM watchdog samples interaction presence every 250 ms. It updates age/presence bookkeeping without removing active portraits; portraits are removed from play only by collision or an explicit live-end reset.
+
 The arena also subscribes to the normalized connector at `http://127.0.0.1:8787/events`. Start that service in another PowerShell window:
 
 ```powershell
