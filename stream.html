@@ -13,7 +13,6 @@
     .fighter { position: absolute; width: 62px; height: 76px; display: grid; justify-items: center; gap: 3px; z-index: 1; transition: all .5s ease; }
     .avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--c); display: grid; place-items: center; color: #080a11; font-weight: 900; border: 3px solid #fff9; box-shadow: 0 5px 14px #0008; overflow: hidden; }
     .avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .fighter span { max-width: 86px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 700; text-shadow: 0 2px 4px #000; }
     .pulse { animation: pulse .5s ease; }
     @keyframes pulse { 50% { filter: brightness(2) saturate(1.5); transform: scale(1.4); } }
     .empty { position: absolute; inset: 45% 20% auto; text-align: center; color: #ffffff99; font-size: 12px; }
@@ -38,7 +37,7 @@
       el.dataset.id = u.id;
       el.style.left = `${12 + Math.random() * 72}%`;
       el.style.top = `${20 + Math.random() * 62}%`;
-      el.innerHTML = `<div class="avatar" style="--c:${u.color || '#7c6cff'}">${u.avatar ? `<img src="${esc(u.avatar)}">` : initials(esc(u.name))}</div><span>${esc(u.name)}</span>`;
+      el.innerHTML = `<div class="avatar" style="--c:${u.color || '#7c6cff'}">${u.avatar ? `<img src="${esc(u.avatar)}">` : initials(esc(u.name))}</div>`;
       stage.appendChild(el);
       fighters.set(u.id, el);
       lastSeen.set(u.id, Date.now());

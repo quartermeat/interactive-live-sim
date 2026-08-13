@@ -195,12 +195,6 @@ func (a *arena) drawViewer(v *viewer) {
 		ctx.Set("textAlign", "center")
 		ctx.Call("fillText", initials(v.Name), v.X, v.Y+10)
 	}
-	ctx.Set("fillStyle", "white")
-	ctx.Set("font", "700 20px Segoe UI, system-ui, sans-serif")
-	ctx.Set("textAlign", "center")
-	ctx.Set("shadowColor", "rgba(0,0,0,0.8)")
-	ctx.Set("shadowBlur", 4)
-	ctx.Call("fillText", v.Name, v.X, v.Y+86)
 	ctx.Call("restore")
 }
 
