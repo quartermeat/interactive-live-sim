@@ -46,6 +46,8 @@ The arena keeps a five-minute rolling `joined` roster. Portraits scale from 100%
 
 A Go/WASM watchdog samples interaction presence every 250 ms. It updates age/presence bookkeeping without removing active portraits; portraits are removed from play only by collision or an explicit live-end reset.
 
+Avatar size belongs to the current life: it shrinks while alive and resets only after collision death and respawn. The current release is shown beneath the arena title.
+
 The arena also subscribes to the normalized connector at `http://127.0.0.1:8787/events`. Start that service in another PowerShell window:
 
 ```powershell

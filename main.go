@@ -12,6 +12,7 @@ import (
 const (
 	logicalW          = 1080
 	logicalH          = 1980
+	appVersion        = "v0.3.1"
 	timeout           = 2 * time.Minute
 	maxActiveViewers  = 24
 	viewerSlotSpacing = 150.0
@@ -26,6 +27,7 @@ type viewer struct {
 	InteractionSeq          uint64
 	InteractionAt           time.Time
 	JoinedAt                time.Time
+	LifeStartedAt           time.Time
 	Scale                   float64
 	InteractionScore        int
 	RespawnAt               time.Time
@@ -148,11 +150,17 @@ func (a *arena) runWatchdog(now time.Time) {
 			v.X, v.Y = a.spawnPosition()
 			v.VX, v.VY = randomVelocity()
 			v.RespawnAt = time.Time{}
+			v.LifeStartedAt = now
+			v.Scale = 1
 			a.viewers[id] = v
 		}
 		if now.Sub(v.JoinedAt) > joinedRetention && v.RespawnAt.IsZero() && a.viewers[id] == nil {
 			delete(a.joined, id)
 			delete(a.lastInteraction, id)
+			continue
+		}
+		if !v.LifeStartedAt.IsZero() {
+			v.Scale = avatarScale(now, v.LifeStartedAt)
 		}
 	}
 }
@@ -328,6 +336,10 @@ func (a *arena) draw() {
 	ctx.Set("shadowColor", "rgba(0,0,0,0.8)")
 	ctx.Set("shadowBlur", 20)
 	ctx.Call("fillText", "AVATAR ARENA", logicalW/2, 192)
+	ctx.Set("font", "600 20px Segoe UI, system-ui, sans-serif")
+	ctx.Set("fillStyle", "rgba(255,255,255,0.55)")
+	ctx.Set("shadowBlur", 8)
+	ctx.Call("fillText", appVersion, logicalW/2, 238)
 	ctx.Set("shadowBlur", 0)
 
 	for _, v := range a.viewers {
@@ -491,7 +503,7 @@ func (a *arena) connectEvents() {
 			v = &viewer{
 				ID: e.Viewer.ID, Name: e.Viewer.Username, Avatar: e.Viewer.AvatarURL,
 				Color: e.Viewer.Color, X: x, Y: y, VX: vx, VY: vy,
-				InteractionSeq: a.sequence, InteractionAt: interactionAt, JoinedAt: interactionAt, Scale: 1, LastSeen: time.Now(),
+				InteractionSeq: a.sequence, InteractionAt: interactionAt, JoinedAt: interactionAt, LifeStartedAt: interactionAt, Scale: 1, LastSeen: time.Now(),
 			}
 			a.joined[v.ID] = v
 			a.loadAvatar(v)
@@ -499,7 +511,6 @@ func (a *arena) connectEvents() {
 			v.Avatar = e.Viewer.AvatarURL
 			a.loadAvatar(v)
 		}
-		v.Scale = avatarScale(time.Now(), v.JoinedAt)
 		if _, active := a.viewers[v.ID]; active || len(a.viewers) < maxActiveViewers {
 			a.viewers[v.ID] = v
 		}
